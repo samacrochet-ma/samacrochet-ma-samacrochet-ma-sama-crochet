@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://samacrochet-ma.github.io/samacrochet-ma-sama-crochet/sitemap.xml
