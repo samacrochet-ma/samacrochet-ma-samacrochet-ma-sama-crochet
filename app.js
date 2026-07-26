@@ -385,7 +385,7 @@ function closeSearchBar(){
 const INFO_CONTENT = {
   terms: {
     title: 'شروط الاستخدام',
-    body: `<p>باستخدامك لموقع SAMA CROCHET فأنت توافقين على الشروط التالية:</p>
+    body: `<p>باستخدامك لموقع SAMA CROCHET فأنت توافق على الشروط التالية:</p>
     <p>• جميع المنتجات مصنوعة يدويا 100%، قد تختلف تفاصيل بسيطة بين القطعة والصورة المعروضة.</p>
     <p>• الأسعار المعروضة بالدرهم المغربي وقابلة للتغيير دون إشعار مسبق.</p>
     <p>• يُمنع نسخ أو إعادة استخدام محتوى الموقع (صور، نصوص) دون إذن مسبق.</p>`
@@ -518,10 +518,10 @@ async function trackOrderByPhone(){
     if(!matches.length){
       box.innerHTML = `<div class="track-empty">
         <i class="fas fa-box-open"></i>
-        ما لقيناش طلب بهاد الرقم. تأكدي من الرقم، أو تواصلي معنا مباشرة عبر واتساب.
+        ما لقيناش طلب بهاد الرقم. تأكد من الرقم، أو تواصل معنا مباشرة عبر واتساب.
         <div class="track-empty-cta">
           <a href="https://wa.me/212621091399" target="_blank" rel="noopener" class="send-btn" style="display:inline-flex;text-decoration:none;background:linear-gradient(135deg,#25d366,#128c7e);width:auto;padding:10px 24px;">
-            <i class="fab fa-whatsapp"></i>&nbsp;تواصلي معنا
+            <i class="fab fa-whatsapp"></i>&nbsp;تواصل معنا
           </a>
         </div>
       </div>`;
@@ -531,7 +531,7 @@ async function trackOrderByPhone(){
     const countHtml = `<div class="track-count">لقينا ${matches.length} طلب${matches.length>1?'ات':''} بهاد الرقم</div>`;
     box.innerHTML = countHtml + matches.map(renderTrackOrderCard).join('');
   } catch(e){
-    box.innerHTML = '<p style="color:var(--danger);text-align:center;">مشكل فالاتصال، حاولي مرة أخرى.</p>';
+    box.innerHTML = '<p style="color:var(--danger);text-align:center;">مشكل فالاتصال، حاول مرة أخرى.</p>';
   }
 }
 
