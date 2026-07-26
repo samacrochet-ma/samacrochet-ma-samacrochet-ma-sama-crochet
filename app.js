@@ -39,6 +39,22 @@ const WHATSAPP_NUMBER = "212621091399";
 let useCloud = false;
 let adminPassword = ''; // كتتخزن مؤقتاً فالمتصفح بعد الدخول الصحيح، ماكاينش مكتوبة فالكود
 
+// الفئات الصحيحة الوحيدة اللي كيدعمها الموقع (خاصها تطابق data-cat فـ index.html)
+const VALID_CATEGORIES = ['keychains','dolls','flowers','accessories'];
+
+// ✅ مصلحة: كتنضف قيمة cat بقوة وكتنبه فـ console إلا كانت غريبة
+function normalizeCategory(rawCat, productName){
+  let cat = String(rawCat || '').toLowerCase().trim();
+  // كنشيلو أي مسافات زائدة فالوسط ماكانتش متوقعة
+  cat = cat.replace(/\s+/g, '');
+  if (!VALID_CATEGORIES.includes(cat)) {
+    console.warn('⚠️ تصنيف غير معروف للمنتج:', productName, '→ القيمة فالشيت:', JSON.stringify(rawCat));
+    // تصنيف احتياطي مؤقت باش المنتج ماكيختفيش نهائيا من الموقع
+    return 'accessories';
+  }
+  return cat;
+}
+
 // ══ تحميل المنتجات من Google Sheets ══
 async function loadProductsFromCloud() {
   showSkeletons();
@@ -49,7 +65,7 @@ async function loadProductsFromCloud() {
       products = data.products.map(p => ({
         ...p,
         id:       Number(p.id),
-        cat:      String(p.cat || '').toLowerCase().trim(), // توحيد الفئة لحروف صغيرة (كانت السبب فمشكل الفلترة)
+        cat:      normalizeCategory(p.cat, p.name),
         price:    Number(p.price)    || 0,
         oldPrice: Number(p.oldPrice) || 0,
         stock:    Number(p.stock)    || 0,
@@ -122,7 +138,6 @@ function renderOrdersTable(list) {
   wrap.style.display = 'block';
 
   wrap.innerHTML = list.map((o, i) => {
-    // المنتجات: تقدر توصل كنص "اسم x2 = 90dh | اسم x1 = 45dh" أو كمصفوفة كائنات
     let itemsHTML = '';
     if (typeof o.items === 'string') {
       itemsHTML = o.items.split('|').map(part => {
@@ -223,8 +238,8 @@ async function apiCall(action, payload = {}) {
 }
 
 // ══════════════════════════════
-//  منتجاتك الأصلية (43 منتج) — نسخة احتياطية محلية
-//  الصور خاصها تكون فمجلد images/ بجانب index.html: images/1.jpg ... images/43.jpg
+//  منتجاتك الأصلية (72 منتج) — نسخة احتياطية محلية
+//  الصور خاصها تكون فمجلد images/ بجانب index.html
 // ══════════════════════════════
 let products = JSON.parse(localStorage.getItem('sama_products')) || [
   {id:1,cat:'keychains',name:'Chicken with Flowers',desc:'كتكوت لطيف مع ورود كروشيه ♡',price:46,oldPrice:0,stock:10,img:'images/1.jpg'},
@@ -270,8 +285,6 @@ let products = JSON.parse(localStorage.getItem('sama_products')) || [
   {id:41,cat:'flowers',name:'Bouquet Flowers',desc:'ورود كروشيه جميلة ♡',price:279,oldPrice:320,stock:2,img:''},
   {id:42,cat:'keychains',name:'Kout-kout Twin',desc:'توأم كتاكيت لطيف بقبعة وردية ♡',price:42,oldPrice:0,stock:6,img:''},
   {id:43,cat:'accessories',name:'Rose Flower Earrings',desc:'أقراط ورود حمراء كروشيه ♡',price:45,oldPrice:0,stock:5,img:''},
-
-  // ══ دفعة جديدة (44-63) ══
   {id:44,cat:'keychains',name:'Daisy Chick Bag Charm',desc:'كتكوت أصفر ظريف بزهرة بيضاء، تعليقة شنطة أنيقة ♡',price:58,oldPrice:0,stock:8,img:''},
   {id:45,cat:'keychains',name:'Strawberry Bouquet Charm',desc:'قنينة فراولة صغيرة بزهرة بيضاء، تعليقة شنطة أو مفاتيح ♡',price:65,oldPrice:0,stock:7,img:''},
   {id:46,cat:'keychains',name:'Chick with Heart Keychain',desc:'كتكوت أصفر ظريف حامل قلب أحمر كروشيه ♡',price:48,oldPrice:0,stock:12,img:'images/46.jpg'},
@@ -292,8 +305,6 @@ let products = JSON.parse(localStorage.getItem('sama_products')) || [
   {id:61,cat:'keychains',name:'Ghost Friends Keychain',desc:'شبح ظريف بقبعة ملونة، سلسلة مفاتيح ♡',price:45,oldPrice:0,stock:10,img:'images/61.jpg'},
   {id:62,cat:'keychains',name:'Curly Jellyfish Keychain',desc:'قنديل بحر بأذرع متعرجة، تفاصيل دقيقة، تعليقة مميزة ♡',price:68,oldPrice:0,stock:6,img:'images/19.jpg'},
   {id:63,cat:'flowers',name:'Blue Lily Bouquet',desc:'باقة زنابق زرقاء وكحلية فاخرة مع بطاقة تهنئة ♡',price:275,oldPrice:320,stock:2,img:'images/63.jpg'},
-
-  // ══ دفعة جديدة (64-72) — منتجات مضافة من صور كانت بلا بطاقة ══
   {id:64,cat:'keychains',name:'Bear Couple Keychain',desc:'دبدوبين متحابين يدا بيد مع قلب، طقم سلسلتين مفاتيح ♡',price:75,oldPrice:0,stock:5,img:'images/18.jpg'},
   {id:65,cat:'accessories',name:'Granny Square Flower Bag',desc:'شنطة كروشيه مربعات مزينة بورود بيضاء، متوفرة بالوردي والبنفسجي ♡',price:220,oldPrice:0,stock:2,img:'images/26.jpg'},
   {id:66,cat:'keychains',name:'Froggy Chick Keychain',desc:'كتكوت أصفر بقبعة ضفدع خضراء لطيفة ♡',price:48,oldPrice:0,stock:8,img:'images/27.jpg'},
@@ -329,25 +340,21 @@ function showPage(id){
   if(id==='home') renderFeatured();
 }
 
-// ══ التنقل من القائمة الجانبية (Off-Canvas) ══
 function goToPage(id){
   closeSideMenu();
   showPage(id);
 }
 
-// كتوجه لصفحة المنتجات وكتفعّل فلتر معين (تصنيف حقيقي، أو "sale"، أو "new")
 function goToProducts(cat){
   closeSideMenu();
   showPage('products');
   currentFilter = cat;
-  // نبدلو الزر النشيط فشريط الفلاتر إلى كيتطابق (إلا كان موجود)
   document.querySelectorAll('.filter-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.cat===cat);
   });
   renderProducts();
 }
 
-// الطلبات الخاصة: كتوجه لصفحة تواصل معنا مع رسالة جاهزة
 function goToCustomOrder(){
   closeSideMenu();
   showPage('contact');
@@ -355,7 +362,6 @@ function goToCustomOrder(){
   if(msgEl && !msgEl.value) msgEl.value = 'مرحبا، عندي فكرة لطلب مخصص (لون/حجم/تصميم خاص)، بغيت نتواصل معاكم بخصوصها.';
 }
 
-// حساب المستخدم: ميزة مستقبلية (ماكاينش نظام تسجيل دخول حاليا)
 function openMyAccount(){
   closeSideMenu();
   toast('ميزة "حسابي" غادي تكون متوفرة قريبا ✨','');
@@ -451,7 +457,7 @@ function getTrackStepIndex(status){
   for(let i=TRACK_STEPS.length-1;i>=0;i--){
     if(TRACK_STEPS[i].match.some(k=>s.includes(k))) return i;
   }
-  return 0; // حالة غير معروفة → كنعتبروها بداية المسار بدل ما نخبيو التتبع بالكامل
+  return 0;
 }
 
 function renderTrackOrderCard(o){
@@ -509,7 +515,6 @@ async function trackOrderByPhone(){
     const res = await fetch(SHEET_API + '?action=getOrders');
     const data = await res.json();
     const allOrders = (data.status==='ok' && data.orders) ? data.orders : [];
-    // مقارنة الأرقام بعد تنظيفها من الرموز (0/212 فأول الرقم)
     const cleanInput = phone.replace(/[^0-9]/g,'').replace(/^212/,'0');
     const matches = allOrders.filter(o=>{
       const oPhone = String(o.phone||'').replace(/[^0-9]/g,'').replace(/^212/,'0');
@@ -609,7 +614,6 @@ function stockLabel(s){
   return '<span class="stock-badge">متوفر ✓</span>';
 }
 
-// كتجمع كل صور المنتج المتوفرة (الصورة الرئيسية + صور إضافية اختيارية img2/img3)
 function getProductImages(p){
   return [p.img, p.img2, p.img3].filter(Boolean);
 }
@@ -642,7 +646,6 @@ function createCard(p){
   return div;
 }
 
-// الفئات اللي عندها منتجات حقيقية فقاعدة البيانات حاليا
 const REAL_CATEGORIES = ['keychains','dolls','flowers','accessories'];
 
 function renderProducts(){
@@ -652,14 +655,14 @@ function renderProducts(){
   let list=products.filter(p=>{
     let catOk;
     if(currentFilter==='all')       catOk=true;
-    else if(currentFilter==='new')  catOk=true; // "جديد" = كل المنتجات، مرتبة بالأحدث بعد الفلترة
-    else if(currentFilter==='sale') catOk = p.oldPrice && p.oldPrice > p.price; // التخفيضات
+    else if(currentFilter==='new')  catOk=true;
+    else if(currentFilter==='sale') catOk = p.oldPrice && p.oldPrice > p.price;
     else catOk = String(p.cat).toLowerCase()===currentFilter;
     const qOk=!q||p.name.toLowerCase().includes(q.toLowerCase())||p.desc.includes(q);
     return catOk&&qOk;
   });
 
-  if(currentFilter==='new') list = list.slice().reverse(); // الأحدث أولا
+  if(currentFilter==='new') list = list.slice().reverse();
 
   grid.innerHTML='';
   list.forEach((p,i)=>{
@@ -702,7 +705,6 @@ function openModal(id){
   const imgWrap=document.getElementById('modalImgWrap');
   const imgs = getProductImages(p);
   if(imgs.length>1){
-    // Gallery: صورة رئيسية + شريط صور مصغرة قابلة للضغط
     imgWrap.innerHTML = `
       <img id="modalMainImg" src="${imgs[0]}" alt="${p.name}" style="width:100%;height:280px;object-fit:cover;" onerror="this.parentElement.innerHTML=phHTML('${p.cat}',280)">
       <div class="modal-thumbs">
@@ -731,7 +733,6 @@ function switchModalImg(src,el){
 function modalAddToCart(){ addToCart(currentProductId); closeModal('productModal'); }
 function closeModal(id){document.getElementById(id).classList.remove('show');}
 
-// ══ مشاركة المنتج (Web Share API مع بديل نسخ الرابط/واتساب) ══
 function shareProduct(){
   const p=products.find(x=>x.id===currentProductId);
   if(!p)return;
