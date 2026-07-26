@@ -31,25 +31,20 @@
 })();
 
 // ══════════════════════════════
-//  BACKEND CONFIG (خاصك تبدل هاد الرابط برابط الـ Apps Script ديالك)
+//  BACKEND CONFIG
 // ══════════════════════════════
-const SHEET_API = "https://script.google.com/macros/s/AKfycbwNIPUzwVjzqZyAlv8NW1MJBpibUbvwLTA3NnxGXa6LJdGTHRYI5Q5ioO4u3v69dUCx/exec";
+const SHEET_API = "https://script.google.com/macros/s/AKfycbw29vMBsvGs21Eistfe6tx3PUCt1l_huTmTHvXb8Djd5mB0iv40YKeap-tQgYEy2GbSYg/exec";
 const WHATSAPP_NUMBER = "212621091399";
 
 let useCloud = false;
-let adminPassword = ''; // كتتخزن مؤقتاً فالمتصفح بعد الدخول الصحيح، ماكاينش مكتوبة فالكود
+let adminPassword = '';
 
-// الفئات الصحيحة الوحيدة اللي كيدعمها الموقع (خاصها تطابق data-cat فـ index.html)
 const VALID_CATEGORIES = ['keychains','dolls','flowers','accessories'];
 
-// ✅ مصلحة: كتنضف قيمة cat بقوة وكتنبه فـ console إلا كانت غريبة
 function normalizeCategory(rawCat, productName){
-  let cat = String(rawCat || '').toLowerCase().trim();
-  // كنشيلو أي مسافات زائدة فالوسط ماكانتش متوقعة
-  cat = cat.replace(/\s+/g, '');
+  let cat = String(rawCat || '').toLowerCase().trim().replace(/\s+/g,'');
   if (!VALID_CATEGORIES.includes(cat)) {
     console.warn('⚠️ تصنيف غير معروف للمنتج:', productName, '→ القيمة فالشيت:', JSON.stringify(rawCat));
-    // تصنيف احتياطي مؤقت باش المنتج ماكيختفيش نهائيا من الموقع
     return 'accessories';
   }
   return cat;
@@ -69,6 +64,7 @@ async function loadProductsFromCloud() {
         price:    Number(p.price)    || 0,
         oldPrice: Number(p.oldPrice) || 0,
         stock:    Number(p.stock)    || 0,
+        onSale:   (p.onsale === true || String(p.onsale).toLowerCase() === 'true'),
       }));
       useCloud = true;
       saveProducts();
@@ -78,7 +74,7 @@ async function loadProductsFromCloud() {
   renderProducts();
 }
 
-// ══ حفظ طلب جديد فـ Google Sheets (addOrder مدعومة عبر GET فالباك اند) ══
+// ══ حفظ طلب جديد ══
 async function saveOrderToSheet(order) {
   orders.unshift(order);
   saveOrders();
@@ -217,7 +213,6 @@ async function updateOrderStatusAdmin(row, rowId, btnEl){
   }
 }
 
-// ══ عمليات المنتجات المحمية بكلمة السر (addProduct / updateProduct / deleteProduct) ══
 async function apiCall(action, payload = {}) {
   const protectedActions = ['addProduct', 'updateProduct', 'deleteProduct', 'updateOrderStatus'];
   const body = protectedActions.includes(action)
@@ -239,7 +234,6 @@ async function apiCall(action, payload = {}) {
 
 // ══════════════════════════════
 //  منتجاتك الأصلية (72 منتج) — نسخة احتياطية محلية
-//  الصور خاصها تكون فمجلد images/ بجانب index.html
 // ══════════════════════════════
 let products = JSON.parse(localStorage.getItem('sama_products')) || [
   {id:1,cat:'keychains',name:'Chicken with Flowers',desc:'كتكوت لطيف مع ورود كروشيه ♡',price:46,oldPrice:0,stock:10,img:'images/1.jpg'},
@@ -367,9 +361,6 @@ function openMyAccount(){
   toast('ميزة "حسابي" غادي تكون متوفرة قريبا ✨','');
 }
 
-// ══════════════════════════════
-//  القائمة الجانبية (Off-Canvas Menu)
-// ══════════════════════════════
 function openSideMenu(){
   document.getElementById('sideMenu').classList.add('open');
   document.getElementById('sideMenuOverlay').classList.add('show');
@@ -383,9 +374,6 @@ function closeSideMenu(){
   document.body.style.overflow='';
 }
 
-// ══════════════════════════════
-//  شريط البحث السريع (فالهيدر)
-// ══════════════════════════════
 function openSearchBar(){
   document.getElementById('quickSearchBar').classList.add('open');
   setTimeout(()=>document.getElementById('quickSearchInput').focus(),150);
@@ -394,9 +382,6 @@ function closeSearchBar(){
   document.getElementById('quickSearchBar').classList.remove('open');
 }
 
-// ══════════════════════════════
-//  Info Modal (سياسات الفوتر)
-// ══════════════════════════════
 const INFO_CONTENT = {
   terms: {
     title: 'شروط الاستخدام',
@@ -441,8 +426,16 @@ function openInfoModal(key){
 }
 
 // ══════════════════════════════
-//  تتبع الطلب الحقيقي (بحث عن الطلبات عبر رقم الهاتف فـ Google Sheets)
+//  🔧 مشكل 1: تتبع الطلب — تنظيف رقم الهاتف بطريقة أقوى
 // ══════════════════════════════
+function cleanPhoneNumber(phone){
+  let p = String(phone||'').replace(/[^0-9]/g,''); // نشيلو كل شي غير الأرقام
+  if(p.startsWith('00212')) p = p.slice(5);
+  else if(p.startsWith('212')) p = p.slice(3);
+  if(!p.startsWith('0')) p = '0'+p;
+  return p;
+}
+
 const TRACK_STEPS = [
   {label:'قيد المعالجة', icon:'fa-receipt',      match:['قيد المعالجة','معالجة','جديد','pending','processing']},
   {label:'قيد التحضير',  icon:'fa-heart',        match:['قيد التحضير','تحضير','preparing']},
@@ -514,12 +507,13 @@ async function trackOrderByPhone(){
   try {
     const res = await fetch(SHEET_API + '?action=getOrders');
     const data = await res.json();
-    const allOrders = (data.status==='ok' && data.orders) ? data.orders : [];
-    const cleanInput = phone.replace(/[^0-9]/g,'').replace(/^212/,'0');
-    const matches = allOrders.filter(o=>{
-      const oPhone = String(o.phone||'').replace(/[^0-9]/g,'').replace(/^212/,'0');
-      return oPhone === cleanInput;
-    });
+    if(data.status !== 'ok'){
+      box.innerHTML = '<p style="color:var(--danger);text-align:center;">مشكل فالسيرفر، حاولي مرة أخرى.</p>';
+      return;
+    }
+    const allOrders = data.orders || [];
+    const cleanInput = cleanPhoneNumber(phone);
+    const matches = allOrders.filter(o => cleanPhoneNumber(o.phone) === cleanInput);
 
     if(!matches.length){
       box.innerHTML = `<div class="track-empty">
@@ -542,7 +536,7 @@ async function trackOrderByPhone(){
 }
 
 // ══════════════════════════════
-//  Ripple Effect (تأثير التموج عند الضغط على الأزرار)
+//  Ripple Effect
 // ══════════════════════════════
 function initRippleEffect(){
   document.addEventListener('click', function(e){
@@ -561,9 +555,6 @@ function initRippleEffect(){
   });
 }
 
-// ══════════════════════════════
-//  UTIL: Debounce (لتأخير البحث وتخفيف الحمل عن كل ضغطة حرف)
-// ══════════════════════════════
 function debounce(fn, delay){
   let t;
   return function(...args){
@@ -572,9 +563,6 @@ function debounce(fn, delay){
   };
 }
 
-// ══════════════════════════════
-//  Loading Skeleton (هيكل تحميل وقت جلب المنتجات من الشيت)
-// ══════════════════════════════
 function skeletonHTML(count){
   let html='';
   for(let i=0;i<count;i++){
@@ -618,16 +606,19 @@ function getProductImages(p){
   return [p.img, p.img2, p.img3].filter(Boolean);
 }
 
+// ══════════════════════════════
+//  🔧 مشكل 2: فتح صفحة كاملة ديال المنتج بدل Modal صغير
+// ══════════════════════════════
 function createCard(p){
-  const hasSale = p.oldPrice && p.oldPrice > p.price;
+  const hasSale = p.onSale || (p.oldPrice && p.oldPrice > p.price);
   const outOfStock = p.stock===0;
   const div=document.createElement('div');
   div.className='product-card';
   div.innerHTML=`
-    <div class="card-img-wrap" onclick="openModal(${p.id})">
+    <div class="card-img-wrap" onclick="openProductPage(${p.id})">
       ${productImg(p,240)}
       ${hasSale?'<div class="card-badge sale">تخفيض</div>':''}
-      <div class="quick-view-btn"><span><i class="fas fa-eye" style="margin-left:6px;"></i>عرض سريع</span></div>
+      <div class="quick-view-btn"><span><i class="fas fa-eye" style="margin-left:6px;"></i>عرض المنتج</span></div>
     </div>
     <div class="card-body">
       <div class="card-cat">${CAT_ICONS[p.cat]||'🧶'} ${CAT_LABELS[p.cat]||p.cat}</div>
@@ -635,10 +626,10 @@ function createCard(p){
       <p>${p.desc}</p>
       <div class="card-price-row">
         <span class="price-now">${p.price} درهم</span>
-        ${hasSale?`<span class="price-old">${p.oldPrice} درهم</span>`:''}
+        ${p.oldPrice&&p.oldPrice>p.price?`<span class="price-old">${p.oldPrice} درهم</span>`:''}
         ${stockLabel(p.stock)}
       </div>
-      <button class="add-btn" onclick="addToCart(${p.id})" ${outOfStock?'disabled':''}>
+      <button class="add-btn" onclick="event.stopPropagation();addToCart(${p.id})" ${outOfStock?'disabled':''}>
         ${outOfStock?'نفد المخزون':'أضف إلى السلة ♡'}
       </button>
     </div>
@@ -656,7 +647,7 @@ function renderProducts(){
     let catOk;
     if(currentFilter==='all')       catOk=true;
     else if(currentFilter==='new')  catOk=true;
-    else if(currentFilter==='sale') catOk = p.oldPrice && p.oldPrice > p.price;
+    else if(currentFilter==='sale') catOk = p.onSale || (p.oldPrice && p.oldPrice > p.price);
     else catOk = String(p.cat).toLowerCase()===currentFilter;
     const qOk=!q||p.name.toLowerCase().includes(q.toLowerCase())||p.desc.includes(q);
     return catOk&&qOk;
@@ -695,9 +686,61 @@ function setFilter(btn){
 function applyFilters(){renderProducts();}
 const debouncedApplyFilters = debounce(applyFilters, 300);
 
-// ══════════════════════════════
-//  MODAL
-// ══════════════════════════════
+// ══ صفحة المنتج الكاملة (جديد) ══
+function openProductPage(id){
+  const p=products.find(x=>x.id===id);
+  if(!p)return;
+  currentProductId=id;
+  renderProductDetail(p);
+  showPage('detail');
+}
+
+function renderProductDetail(p){
+  const imgs = getProductImages(p);
+  const mainWrap = document.getElementById('detailMainImgWrap');
+  if(imgs.length){
+    mainWrap.innerHTML = `<img id="detailMainImg" src="${imgs[0]}" alt="${p.name}" onclick="openZoom(document.getElementById('detailMainImg').src)" onerror="this.parentElement.innerHTML=phHTML('${p.cat}',380)">`;
+  } else {
+    mainWrap.innerHTML = phHTML(p.cat,380);
+  }
+  const thumbsWrap = document.getElementById('detailThumbs');
+  if(imgs.length>1){
+    thumbsWrap.innerHTML = imgs.map((src,i)=>`<img src="${src}" class="modal-thumb${i===0?' active':''}" onclick="switchDetailImg('${src}',this)">`).join('');
+  } else {
+    thumbsWrap.innerHTML = '';
+  }
+  document.getElementById('detailCat').textContent=(CAT_ICONS[p.cat]||'🧶')+' '+(CAT_LABELS[p.cat]||p.cat);
+  document.getElementById('detailName').textContent=p.name;
+  document.getElementById('detailDesc').textContent=p.desc;
+  document.getElementById('detailPrice').textContent=p.price;
+  const oldEl=document.getElementById('detailOld');
+  oldEl.textContent=p.oldPrice&&p.oldPrice>p.price?p.oldPrice+' درهم':'';
+  document.getElementById('detailStock').innerHTML=stockLabel(p.stock);
+  const addBtn=document.getElementById('detailAddBtn');
+  addBtn.disabled=p.stock===0;
+  addBtn.textContent=p.stock===0?'نفد المخزون':'أضف إلى السلة ♡';
+}
+
+function switchDetailImg(src,el){
+  document.getElementById('detailMainImg').src=src;
+  document.querySelectorAll('#detailThumbs .modal-thumb').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function detailAddToCart(){ addToCart(currentProductId); }
+
+function shareProductDetail(){ shareProduct(); }
+
+// ══ تكبير الصورة (Zoom) ══
+function openZoom(src){
+  document.getElementById('zoomImg').src=src;
+  document.getElementById('zoomOverlay').classList.add('show');
+}
+function closeZoom(){
+  document.getElementById('zoomOverlay').classList.remove('show');
+}
+
+// دالة قديمة محتفظ بيها للتوافق (ماعادش كتستعمل من الكارد لكن مازالة شغالة)
 function openModal(id){
   const p=products.find(x=>x.id===id);
   if(!p)return;
@@ -874,7 +917,37 @@ function sendContactMsg(){
 }
 
 // ══════════════════════════════
-//  ADMIN — تسجيل الدخول عبر السيرفر (checkLogin) بدل المقارنة المحلية
+//  🔧 مشكل 3: الوضع الليلي (Dark Mode)
+// ══════════════════════════════
+function initDarkMode(){
+  const saved = localStorage.getItem('sama_theme');
+  if(saved==='dark'){
+    document.documentElement.setAttribute('data-theme','dark');
+  }
+  updateDarkModeBtn();
+}
+function toggleDarkMode(){
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  if(isDark){
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('sama_theme','light');
+  } else {
+    document.documentElement.setAttribute('data-theme','dark');
+    localStorage.setItem('sama_theme','dark');
+  }
+  updateDarkModeBtn();
+}
+function updateDarkModeBtn(){
+  const btn = document.getElementById('darkModeBtn');
+  if(!btn) return;
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  btn.innerHTML = isDark
+    ? '<i class="fas fa-sun"></i> الوضع النهاري'
+    : '<i class="fas fa-moon"></i> الوضع الليلي';
+}
+
+// ══════════════════════════════
+//  ADMIN
 // ══════════════════════════════
 async function adminLogin(){
   const pass=document.getElementById('adminPass').value;
@@ -962,6 +1035,8 @@ function openEdit(id){
   document.getElementById('editImgUrl').value=p.img||'';
   document.getElementById('editImg2').value=p.img2||'';
   document.getElementById('editImg3').value=p.img3||'';
+  const onSaleEl = document.getElementById('editOnSale');
+  if(onSaleEl) onSaleEl.checked = !!p.onSale;
   document.getElementById('editModal').classList.add('show');
 }
 
@@ -977,8 +1052,10 @@ async function saveEdit(){
   p.img=document.getElementById('editImgUrl').value.trim();
   p.img2=document.getElementById('editImg2').value.trim();
   p.img3=document.getElementById('editImg3').value.trim();
+  const onSaleEl = document.getElementById('editOnSale');
+  p.onSale = onSaleEl ? onSaleEl.checked : p.onSale;
   saveProducts();
-  const res = await apiCall('updateProduct', p);
+  const res = await apiCall('updateProduct', {...p, onsale: p.onSale});
   if (res && res.status !== 'error') {
     closeModal('editModal');loadProductsTable();
     toast('تم حفظ التعديلات ✓','success');
@@ -1023,11 +1100,11 @@ async function updateStock(id,d){
   const p=products.find(x=>x.id===id);if(!p)return;
   p.stock=Math.max(0,p.stock+d);
   saveProducts();loadStock();loadOverview();
-  await apiCall('updateProduct', p);
+  await apiCall('updateProduct', {...p, onsale: p.onSale});
 }
 
 // ══════════════════════════════
-//  ADD PRODUCT
+//  🔧 مشكل 4: إضافة منتج مع خاصية "onSale"
 // ══════════════════════════════
 function changeAddQty(d){
   const el=document.getElementById('addStock');
@@ -1044,9 +1121,11 @@ async function saveNewProduct(){
   const img=document.getElementById('addImgUrl').value.trim();
   const img2=document.getElementById('addImg2').value.trim();
   const img3=document.getElementById('addImg3').value.trim();
+  const onSaleEl = document.getElementById('addOnSale');
+  const onSale = onSaleEl ? onSaleEl.checked : false;
   if(!name||!price){toast('يرجى إدخال الاسم والسعر','danger');return;}
-  const newP={ id:Date.now(), cat, name, desc, price, oldPrice, stock, img, img2, img3 };
-  const res = await apiCall('addProduct', newP);
+  const newP={ id:Date.now(), cat, name, desc, price, oldPrice, stock, img, img2, img3, onSale };
+  const res = await apiCall('addProduct', {...newP, onsale: onSale});
   if (res && res.status !== 'error') {
     products.unshift(newP);saveProducts();
     toast('تم إضافة المنتج ✓','success');
@@ -1058,6 +1137,7 @@ async function saveNewProduct(){
     document.getElementById('addImgUrl').value='';
     document.getElementById('addImg2').value='';
     document.getElementById('addImg3').value='';
+    if(onSaleEl) onSaleEl.checked=false;
     loadProductsTable();loadOverview();
   }
 }
@@ -1084,7 +1164,7 @@ window.addEventListener('scroll',()=>{
 });
 
 // ══════════════════════════════
-//  SECRET LONG PRESS ON LOGO (2 ثواني) — يفتح لوحة الأدمن
+//  SECRET LONG PRESS ON LOGO
 // ══════════════════════════════
 (function(){
   const logo = document.getElementById('logoArea');
@@ -1107,8 +1187,8 @@ window.addEventListener('scroll',()=>{
 loadProductsFromCloud();
 updateBadge();
 initRippleEffect();
+initDarkMode();
 
-// شريط البحث السريع فالهيدر: كيبحث مباشرة وكيوجه لصفحة المنتجات (مع تأخير بسيط)
 document.getElementById('quickSearchInput').addEventListener('input', debounce(function(){
   if(!document.getElementById('page-products').classList.contains('active')){
     showPage('products');
