@@ -33,7 +33,7 @@
 // ══════════════════════════════
 //  BACKEND CONFIG (خاصك تبدل هاد الرابط برابط الـ Apps Script ديالك)
 // ══════════════════════════════
-const SHEET_API = "https://script.google.com/macros/s/AKfycbw29vMBsvGs21Eistfe6tx3PUCt1l_huTmTHvXb8Djd5mB0iv40YKeap-tQgYEy2GbSYg/exec";
+const SHEET_API = "https://script.google.com/macros/s/AKfycbwNIPUzwVjzqZyAlv8NW1MJBpibUbvwLTA3NnxGXa6LJdGTHRYI5Q5ioO4u3v69dUCx/exec";
 const WHATSAPP_NUMBER = "212621091399";
 
 let useCloud = false;
