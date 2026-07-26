@@ -1,6 +1,6 @@
 // ⚠️ كل مرة كتبدلي شي حاجة فـ index.html / style.css / app.js،
 // خاصك تزيدي الرقم هنا (v7 → v8 → v9 ...) باش يجبر كل الأجهزة تحمل النسخة الجديدة
-const CACHE_NAME = 'sama-crochet-v7';
+const CACHE_NAME = 'sama-crochet-v1';
 
 const CORE_ASSETS = [
   './',
