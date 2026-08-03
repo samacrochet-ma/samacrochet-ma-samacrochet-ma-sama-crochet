@@ -33,7 +33,7 @@
 // ══════════════════════════════
 //  BACKEND CONFIG
 // ══════════════════════════════
-const SHEET_API = "https://script.google.com/macros/s/AKfycbwNIPUzwVjzqZyAlv8NW1MJBpibUbvwLTA3NnxGXa6LJdGTHRYI5Q5ioO4u3v69dUCx/exec";
+const SHEET_API = "https://script.google.com/macros/s/AKfycbw29vMBsvGs21Eistfe6tx3PUCt1l_huTmTHvXb8Djd5mB0iv40YKeap-tQgYEy2GbSYg/exec";
 const WHATSAPP_NUMBER = "212621091399";
 
 let useCloud = false;
@@ -54,7 +54,7 @@ function normalizeCategory(rawCat, productName){
 async function loadProductsFromCloud() {
   showSkeletons();
   try {
-    const res = await fetch(SHEET_API + '?action=getProducts');
+    const res = await fetch(SHEET_API + '?action=getProducts&_ts=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
     if (data.status === 'ok' && data.products && data.products.length > 0) {
       products = data.products.map(p => ({
@@ -94,24 +94,37 @@ async function saveOrderToSheet(order) {
   } catch(e) { console.log('Orders sheet error', e); }
 }
 
-async function loadOrdersFromSheet() {
-  try {
-    const emptyEl = document.getElementById('ordersEmpty');
-    emptyEl.style.display = 'block';
-    emptyEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:2rem;margin-bottom:12px;display:block;opacity:0.6;color:var(--blue-main);"></i>جاري تحميل الطلبات...';
-    document.getElementById('ordersCards').style.display = 'none';
+// ══════════════════════════════
+//  تحميل الطلبات (مع تشخيص فـ Console)
+// ══════════════════════════════
+function loadOrders(){
+  loadOrdersFromSheet();
+}
 
-    const res = await fetch(SHEET_API + '?action=getOrders');
+async function loadOrdersFromSheet() {
+  const emptyEl = document.getElementById('ordersEmpty');
+  const cardsEl = document.getElementById('ordersCards');
+  try {
+    emptyEl.style.display = 'block';
+    cardsEl.style.display = 'none';
+    emptyEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:2rem;margin-bottom:12px;display:block;opacity:0.6;color:var(--blue-main);"></i>جاري تحميل الطلبات...';
+
+    const res = await fetch(SHEET_API + '?action=getOrders&_ts=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
-    if (data.status === 'ok' && data.orders && data.orders.length > 0) {
+
+    console.log('📦 نتيجة getOrders:', data);
+
+    if (data.status === 'ok' && Array.isArray(data.orders) && data.orders.length > 0) {
       renderOrdersTable(data.orders);
-    } else {
+    } else if (data.status === 'ok') {
       emptyEl.innerHTML = '<i class="fas fa-inbox" style="font-size:3rem;opacity:0.3;margin-bottom:12px;display:block;"></i>لا توجد طلبات بعد';
+    } else {
+      console.error('❌ getOrders رجع status error:', data.message);
+      emptyEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size:3rem;opacity:0.3;margin-bottom:12px;display:block;"></i>مشكل: ' + (data.message || 'غير معروف');
     }
   } catch(e) {
-    if (orders.length) renderOrdersTable(orders);
-    else document.getElementById('ordersEmpty').innerHTML =
-      '<i class="fas fa-inbox" style="font-size:3rem;opacity:0.3;margin-bottom:12px;display:block;"></i>لا توجد طلبات بعد';
+    console.error('❌ خطأ فـ loadOrdersFromSheet:', e);
+    emptyEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size:3rem;opacity:0.3;margin-bottom:12px;display:block;"></i>مشكل فالاتصال: ' + e.message;
   }
 }
 
@@ -124,7 +137,7 @@ function statusBadgeClass(status){
 }
 
 function renderOrdersTable(list) {
-  if (!list.length) {
+  if (!list || !list.length) {
     document.getElementById('ordersEmpty').style.display = 'block';
     document.getElementById('ordersCards').style.display = 'none';
     return;
@@ -133,59 +146,65 @@ function renderOrdersTable(list) {
   const wrap = document.getElementById('ordersCards');
   wrap.style.display = 'block';
 
-  wrap.innerHTML = list.map((o, i) => {
-    let itemsHTML = '';
-    if (typeof o.items === 'string') {
-      itemsHTML = o.items.split('|').map(part => {
-        const clean = part.trim();
-        return clean ? `<li><span class="item-name">${clean}</span></li>` : '';
-      }).join('');
-    } else if (Array.isArray(o.items)) {
-      itemsHTML = o.items.map(it =>
-        `<li><span class="item-name">${it.name}</span><span class="item-sub">${it.qty} × ${it.price} DH = ${it.qty*it.price} DH</span></li>`
-      ).join('');
-    }
+  try {
+    wrap.innerHTML = list.map((o, i) => {
+      let itemsHTML = '';
+      if (typeof o.items === 'string') {
+        itemsHTML = o.items.split('|').map(part => {
+          const clean = part.trim();
+          return clean ? `<li><span class="item-name">${clean}</span></li>` : '';
+        }).join('');
+      } else if (Array.isArray(o.items)) {
+        itemsHTML = o.items.map(it =>
+          `<li><span class="item-name">${it.name||''}</span><span class="item-sub">${it.qty||0} × ${it.price||0} DH</span></li>`
+        ).join('');
+      }
 
-    const phoneClean = (o.phone||'').replace(/[^0-9+]/g,'');
-    const dateDisplay = o.date || '—';
-    const status = o.status || 'قيد المعالجة';
-    const rowId = `orderStatus_${i}`;
+      const phoneClean = (o.phone||'').replace(/[^0-9+]/g,'');
+      const dateDisplay = o.date || '—';
+      const status = o.status || 'قيد المعالجة';
+      const rowId = `orderStatus_${i}`;
+      const rowNum = o._row || 0;
 
-    return `
-    <div class="order-card">
-      <div class="order-card-header">
-        <span class="order-num">طلب #${list.length - i}</span>
-        <span class="order-date"><i class="fas fa-calendar-alt" style="margin-left:5px;"></i>${dateDisplay}</span>
-        <span class="order-total-badge">${o.total || 0} درهم</span>
-      </div>
-      <div class="order-status-row">
-        <span class="track-status-pill ${statusBadgeClass(status)}" id="${rowId}_pill">${status}</span>
-        <div class="order-status-edit">
-          <select id="${rowId}_select">
-            ${ORDER_STATUS_OPTIONS.map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
-          </select>
-          <button class="status-save-btn" onclick="updateOrderStatusAdmin(${o._row},'${rowId}',this)">
-            <i class="fas fa-check"></i> حفظ
-          </button>
+      return `
+      <div class="order-card">
+        <div class="order-card-header">
+          <span class="order-num">طلب #${list.length - i}</span>
+          <span class="order-date"><i class="fas fa-calendar-alt" style="margin-left:5px;"></i>${dateDisplay}</span>
+          <span class="order-total-badge">${o.total || 0} درهم</span>
         </div>
-      </div>
-      <div class="order-card-body">
-        <div class="order-info-block">
-          <h5>معلومات الزبون</h5>
-          <p><i class="fas fa-user" style="width:16px;color:var(--blue-main);"></i> ${o.name || '—'}</p>
-          <p><i class="fas fa-phone" style="width:16px;color:var(--blue-main);"></i> <a href="tel:${phoneClean}">${o.phone || '—'}</a>
-             &nbsp;•&nbsp; <a href="https://wa.me/${phoneClean.replace(/^0/,'212')}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> واتساب</a></p>
-          <p><i class="fas fa-map-marker-alt" style="width:16px;color:var(--blue-main);"></i> ${o.city || '—'}</p>
-          <p style="color:var(--text-light);font-size:0.85rem;">${o.address || ''}</p>
+        <div class="order-status-row">
+          <span class="track-status-pill ${statusBadgeClass(status)}" id="${rowId}_pill">${status}</span>
+          <div class="order-status-edit">
+            <select id="${rowId}_select">
+              ${ORDER_STATUS_OPTIONS.map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <button class="status-save-btn" onclick="updateOrderStatusAdmin(${rowNum},'${rowId}',this)">
+              <i class="fas fa-check"></i> حفظ
+            </button>
+          </div>
         </div>
-        <div class="order-info-block">
-          <h5>المنتجات المطلوبة</h5>
-          <ul class="order-items-list">${itemsHTML || '<li>—</li>'}</ul>
+        <div class="order-card-body">
+          <div class="order-info-block">
+            <h5>معلومات الزبون</h5>
+            <p><i class="fas fa-user" style="width:16px;color:var(--blue-main);"></i> ${o.name || '—'}</p>
+            <p><i class="fas fa-phone" style="width:16px;color:var(--blue-main);"></i> <a href="tel:${phoneClean}">${o.phone || '—'}</a>
+               &nbsp;•&nbsp; <a href="https://wa.me/${phoneClean.replace(/^0/,'212')}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> واتساب</a></p>
+            <p><i class="fas fa-map-marker-alt" style="width:16px;color:var(--blue-main);"></i> ${o.city || '—'}</p>
+            <p style="color:var(--text-light);font-size:0.85rem;">${o.address || ''}</p>
+          </div>
+          <div class="order-info-block">
+            <h5>المنتجات المطلوبة</h5>
+            <ul class="order-items-list">${itemsHTML || '<li>—</li>'}</ul>
+          </div>
+          ${o.notes ? `<div class="order-notes"><i class="fas fa-sticky-note" style="margin-left:6px;"></i><strong>ملاحظات:</strong> ${o.notes}</div>` : ''}
         </div>
-        ${o.notes ? `<div class="order-notes"><i class="fas fa-sticky-note" style="margin-left:6px;"></i><strong>ملاحظات:</strong> ${o.notes}</div>` : ''}
-      </div>
-    </div>`;
-  }).join('');
+      </div>`;
+    }).join('');
+  } catch(err) {
+    console.error('❌ خطأ فعرض الطلبات:', err);
+    wrap.innerHTML = '<p style="color:var(--danger);text-align:center;padding:30px;">مشكل فعرض الطلبات، شوفي Console (F12)</p>';
+  }
 }
 
 async function updateOrderStatusAdmin(row, rowId, btnEl){
@@ -385,7 +404,7 @@ function closeSearchBar(){
 const INFO_CONTENT = {
   terms: {
     title: 'شروط الاستخدام',
-    body: `<p>باستخدامك لموقع SAMA CROCHET فأنت توافق على الشروط التالية:</p>
+    body: `<p>باستخدامك لموقع SAMA CROCHET فأنت توافقين على الشروط التالية:</p>
     <p>• جميع المنتجات مصنوعة يدويا 100%، قد تختلف تفاصيل بسيطة بين القطعة والصورة المعروضة.</p>
     <p>• الأسعار المعروضة بالدرهم المغربي وقابلة للتغيير دون إشعار مسبق.</p>
     <p>• يُمنع نسخ أو إعادة استخدام محتوى الموقع (صور، نصوص) دون إذن مسبق.</p>`
@@ -426,10 +445,10 @@ function openInfoModal(key){
 }
 
 // ══════════════════════════════
-//  🔧 مشكل 1: تتبع الطلب — تنظيف رقم الهاتف بطريقة أقوى
+//  تتبع الطلب
 // ══════════════════════════════
 function cleanPhoneNumber(phone){
-  let p = String(phone||'').replace(/[^0-9]/g,''); // نشيلو كل شي غير الأرقام
+  let p = String(phone||'').replace(/[^0-9]/g,'');
   if(p.startsWith('00212')) p = p.slice(5);
   else if(p.startsWith('212')) p = p.slice(3);
   if(!p.startsWith('0')) p = '0'+p;
@@ -505,7 +524,7 @@ async function trackOrderByPhone(){
   box.innerHTML = '<div class="track-loading"><i class="fas fa-spinner fa-spin"></i>كنبحثو على الطلب ديالك...</div>';
 
   try {
-    const res = await fetch(SHEET_API + '?action=getOrders');
+    const res = await fetch(SHEET_API + '?action=getOrders&_ts=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
     if(data.status !== 'ok'){
       box.innerHTML = '<p style="color:var(--danger);text-align:center;">مشكل فالسيرفر، حاولي مرة أخرى.</p>';
@@ -518,10 +537,10 @@ async function trackOrderByPhone(){
     if(!matches.length){
       box.innerHTML = `<div class="track-empty">
         <i class="fas fa-box-open"></i>
-        ما لقيناش طلب بهاد الرقم. تأكد من الرقم، أو تواصل معنا مباشرة عبر واتساب.
+        ما لقيناش طلب بهاد الرقم. تأكدي من الرقم، أو تواصلي معنا مباشرة عبر واتساب.
         <div class="track-empty-cta">
           <a href="https://wa.me/212621091399" target="_blank" rel="noopener" class="send-btn" style="display:inline-flex;text-decoration:none;background:linear-gradient(135deg,#25d366,#128c7e);width:auto;padding:10px 24px;">
-            <i class="fab fa-whatsapp"></i>&nbsp;تواصل معنا
+            <i class="fab fa-whatsapp"></i>&nbsp;تواصلي معنا
           </a>
         </div>
       </div>`;
@@ -531,7 +550,7 @@ async function trackOrderByPhone(){
     const countHtml = `<div class="track-count">لقينا ${matches.length} طلب${matches.length>1?'ات':''} بهاد الرقم</div>`;
     box.innerHTML = countHtml + matches.map(renderTrackOrderCard).join('');
   } catch(e){
-    box.innerHTML = '<p style="color:var(--danger);text-align:center;">مشكل فالاتصال، حاول مرة أخرى.</p>';
+    box.innerHTML = '<p style="color:var(--danger);text-align:center;">مشكل فالاتصال، حاولي مرة أخرى.</p>';
   }
 }
 
@@ -602,13 +621,11 @@ function stockLabel(s){
   return '<span class="stock-badge">متوفر ✓</span>';
 }
 
+// ✅ 5 صور بدل 3
 function getProductImages(p){
-  return [p.img, p.img2, p.img3].filter(Boolean);
+  return [p.img, p.img2, p.img3, p.img4, p.img5].filter(Boolean);
 }
 
-// ══════════════════════════════
-//  🔧 مشكل 2: فتح صفحة كاملة ديال المنتج بدل Modal صغير
-// ══════════════════════════════
 function createCard(p){
   const hasSale = p.onSale || (p.oldPrice && p.oldPrice > p.price);
   const outOfStock = p.stock===0;
@@ -686,7 +703,7 @@ function setFilter(btn){
 function applyFilters(){renderProducts();}
 const debouncedApplyFilters = debounce(applyFilters, 300);
 
-// ══ صفحة المنتج الكاملة (جديد) ══
+// ══ صفحة تفاصيل المنتج ══
 function openProductPage(id){
   const p=products.find(x=>x.id===id);
   if(!p)return;
@@ -728,10 +745,8 @@ function switchDetailImg(src,el){
 }
 
 function detailAddToCart(){ addToCart(currentProductId); }
-
 function shareProductDetail(){ shareProduct(); }
 
-// ══ تكبير الصورة (Zoom) ══
 function openZoom(src){
   document.getElementById('zoomImg').src=src;
   document.getElementById('zoomOverlay').classList.add('show');
@@ -740,7 +755,6 @@ function closeZoom(){
   document.getElementById('zoomOverlay').classList.remove('show');
 }
 
-// دالة قديمة محتفظ بيها للتوافق (ماعادش كتستعمل من الكارد لكن مازالة شغالة)
 function openModal(id){
   const p=products.find(x=>x.id===id);
   if(!p)return;
@@ -917,7 +931,7 @@ function sendContactMsg(){
 }
 
 // ══════════════════════════════
-//  🔧 مشكل 3: الوضع الليلي (Dark Mode)
+//  الوضع الليلي
 // ══════════════════════════════
 function initDarkMode(){
   const saved = localStorage.getItem('sama_theme');
@@ -952,7 +966,7 @@ function updateDarkModeBtn(){
 async function adminLogin(){
   const pass=document.getElementById('adminPass').value;
   try {
-    const res = await fetch(SHEET_API + '?action=checkLogin&password=' + encodeURIComponent(pass));
+    const res = await fetch(SHEET_API + '?action=checkLogin&password=' + encodeURIComponent(pass) + '&_ts=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
     if(data.status === 'ok'){
       adminPassword = pass;
@@ -1035,6 +1049,8 @@ function openEdit(id){
   document.getElementById('editImgUrl').value=p.img||'';
   document.getElementById('editImg2').value=p.img2||'';
   document.getElementById('editImg3').value=p.img3||'';
+  document.getElementById('editImg4').value=p.img4||'';
+  document.getElementById('editImg5').value=p.img5||'';
   const onSaleEl = document.getElementById('editOnSale');
   if(onSaleEl) onSaleEl.checked = !!p.onSale;
   document.getElementById('editModal').classList.add('show');
@@ -1052,6 +1068,8 @@ async function saveEdit(){
   p.img=document.getElementById('editImgUrl').value.trim();
   p.img2=document.getElementById('editImg2').value.trim();
   p.img3=document.getElementById('editImg3').value.trim();
+  p.img4=document.getElementById('editImg4').value.trim();
+  p.img5=document.getElementById('editImg5').value.trim();
   const onSaleEl = document.getElementById('editOnSale');
   p.onSale = onSaleEl ? onSaleEl.checked : p.onSale;
   saveProducts();
@@ -1071,11 +1089,6 @@ async function deleteProductAdmin(id){
     loadProductsTable();loadOverview();
     toast('تم الحذف ✓','danger');
   }
-}
-
-function loadOrders(){
-  if (orders.length) renderOrdersTable(orders);
-  loadOrdersFromSheet();
 }
 
 function loadStock(){
@@ -1104,7 +1117,7 @@ async function updateStock(id,d){
 }
 
 // ══════════════════════════════
-//  🔧 مشكل 4: إضافة منتج مع خاصية "onSale"
+//  ADD PRODUCT
 // ══════════════════════════════
 function changeAddQty(d){
   const el=document.getElementById('addStock');
@@ -1121,10 +1134,12 @@ async function saveNewProduct(){
   const img=document.getElementById('addImgUrl').value.trim();
   const img2=document.getElementById('addImg2').value.trim();
   const img3=document.getElementById('addImg3').value.trim();
+  const img4=document.getElementById('addImg4').value.trim();
+  const img5=document.getElementById('addImg5').value.trim();
   const onSaleEl = document.getElementById('addOnSale');
   const onSale = onSaleEl ? onSaleEl.checked : false;
   if(!name||!price){toast('يرجى إدخال الاسم والسعر','danger');return;}
-  const newP={ id:Date.now(), cat, name, desc, price, oldPrice, stock, img, img2, img3, onSale };
+  const newP={ id:Date.now(), cat, name, desc, price, oldPrice, stock, img, img2, img3, img4, img5, onSale };
   const res = await apiCall('addProduct', {...newP, onsale: onSale});
   if (res && res.status !== 'error') {
     products.unshift(newP);saveProducts();
@@ -1137,6 +1152,8 @@ async function saveNewProduct(){
     document.getElementById('addImgUrl').value='';
     document.getElementById('addImg2').value='';
     document.getElementById('addImg3').value='';
+    document.getElementById('addImg4').value='';
+    document.getElementById('addImg5').value='';
     if(onSaleEl) onSaleEl.checked=false;
     loadProductsTable();loadOverview();
   }
