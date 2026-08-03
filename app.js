@@ -148,18 +148,29 @@ function renderOrdersTable(list) {
   try {
     wrap.innerHTML = list.map((o, i) => {
       let itemsHTML = '';
-      if (typeof o.items === 'string') {
-        itemsHTML = o.items.split('|').map(part => {
-          const clean = part.trim();
-          return clean ? `<li><span class="item-name">${clean}</span></li>` : '';
-        }).join('');
-      } else if (Array.isArray(o.items)) {
-        itemsHTML = o.items.map(it =>
-          `<li><span class="item-name">${it.name||''}</span><span class="item-sub">${it.qty||0} × ${it.price||0} DH</span></li>`
-        ).join('');
+
+      // معالجة آمنة لـ items لتفادي الخطأ
+      try {
+        if (typeof o.items === 'string') {
+          itemsHTML = o.items.split('|').map(part => {
+            const clean = part.trim();
+            return clean ? `<li><span class="item-name">${clean}</span></li>` : '';
+          }).join('');
+        } else if (Array.isArray(o.items)) {
+          itemsHTML = o.items.map(it => {
+            if (typeof it === 'object' && it !== null) {
+              return `<li><span class="item-name">${it.name || ''}</span><span class="item-sub">${it.qty || 0} × ${it.price || 0} DH</span></li>`;
+            }
+            return `<li><span class="item-name">${String(it)}</span></li>`;
+          }).join('');
+        } else if (o.items) {
+          itemsHTML = `<li><span class="item-name">${String(o.items)}</span></li>`;
+        }
+      } catch (errItems) {
+        itemsHTML = `<li><span class="item-name">${String(o.items || '—')}</span></li>`;
       }
 
-      const phoneClean = (o.phone||'').replace(/[^0-9+]/g,'');
+      const phoneClean = String(o.phone || '').replace(/[^0-9+]/g, '');
       const dateDisplay = o.date || '—';
       const status = o.status || 'قيد المعالجة';
       const rowId = `orderStatus_${i}`;
@@ -176,7 +187,7 @@ function renderOrdersTable(list) {
           <span class="track-status-pill ${statusBadgeClass(status)}" id="${rowId}_pill">${status}</span>
           <div class="order-status-edit">
             <select id="${rowId}_select">
-              ${ORDER_STATUS_OPTIONS.map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
+              ${ORDER_STATUS_OPTIONS.map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${s}</option>`).join('')}
             </select>
             <button class="status-save-btn" onclick="updateOrderStatusAdmin(${rowNum},'${rowId}',this)">
               <i class="fas fa-check"></i> حفظ
@@ -187,8 +198,7 @@ function renderOrdersTable(list) {
           <div class="order-info-block">
             <h5>معلومات الزبون</h5>
             <p><i class="fas fa-user" style="width:16px;color:var(--blue-main);"></i> ${o.name || '—'}</p>
-            <p><i class="fas fa-phone" style="width:16px;color:var(--blue-main);"></i> <a href="tel:${phoneClean}">${o.phone || '—'}</a>
-               &nbsp;•&nbsp; <a href="https://wa.me/${phoneClean.replace(/^0/,'212')}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> واتساب</a></p>
+            <p><i class="fas fa-phone" style="width:16px;color:var(--blue-main);"></i> <a href="tel:${phoneClean}">${o.phone || '—'}</a> &nbsp;•&nbsp; <a href="https://wa.me/${phoneClean.replace(/^0/, '212')}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> واتساب</a></p>
             <p><i class="fas fa-map-marker-alt" style="width:16px;color:var(--blue-main);"></i> ${o.city || '—'}</p>
             <p style="color:var(--text-light);font-size:0.85rem;">${o.address || ''}</p>
           </div>
@@ -200,9 +210,9 @@ function renderOrdersTable(list) {
         </div>
       </div>`;
     }).join('');
-  } catch(err) {
+  } catch (err) {
     console.error('❌ خطأ فعرض الطلبات:', err);
-    wrap.innerHTML = '<p style="color:var(--danger);text-align:center;padding:30px;">مشكل فعرض الطلبات، شوفي Console (F12)</p>';
+    wrap.innerHTML = '<p style="color:var(--danger);text-align:center;padding:30px;">حدث خطأ أثناء عرض الطلبات.</p>';
   }
 }
 
