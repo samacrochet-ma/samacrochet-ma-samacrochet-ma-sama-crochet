@@ -137,7 +137,7 @@
   </div>
 </div>
 
-<!-- ══ PRODUCT QUICK VIEW MODAL (احتياطي، ماعادش كيتفتح من الكارد) ══ -->
+<!-- ══ PRODUCT QUICK VIEW MODAL (احتياطي) ══ -->
 <div class="modal" id="productModal">
   <div class="modal-box">
     <button class="modal-close" onclick="closeModal('productModal')"><i class="fas fa-times"></i></button>
@@ -171,7 +171,7 @@
         • بعض المنتجات قد تحتاج <strong>2-3 أيام إنتاج</strong> قبل الشحن.<br>
         • الطلبات المخصصة <strong>غير قابلة للإرجاع أو الاستبدال.</strong>
       </div>
-      <div class="form-group"><label>الاسم الكامل *</label><input type="text" id="ordName" placeholder="......"></div>
+      <div class="form-group"><label>الاسم الكامل *</label><input type="text" id="ordName" placeholder="مثال: سارة الخالدي"></div>
       <div class="form-group"><label>رقم الهاتف *</label><input type="tel" id="ordPhone" placeholder="06XXXXXXXX"></div>
       <div class="form-group"><label>المدينة *</label><input type="text" id="ordCity" placeholder="مثال: الدار البيضاء"></div>
       <div class="form-group"><label>العنوان التفصيلي *</label><textarea id="ordAddr" placeholder="الحي - الشارع - رقم المبنى ..."></textarea></div>
@@ -211,6 +211,10 @@
       <div class="form-row">
         <div class="form-group"><label>صورة إضافية 2 (اختياري)</label><input type="text" id="editImg2" placeholder="images/1b.jpg"></div>
         <div class="form-group"><label>صورة إضافية 3 (اختياري)</label><input type="text" id="editImg3" placeholder="images/1c.jpg"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>صورة إضافية 4 (اختياري)</label><input type="text" id="editImg4" placeholder="images/1d.jpg"></div>
+        <div class="form-group"><label>صورة إضافية 5 (اختياري)</label><input type="text" id="editImg5" placeholder="images/1e.jpg"></div>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:10px;">
         <input type="checkbox" id="editOnSale" style="width:20px;height:20px;cursor:pointer;">
@@ -302,7 +306,7 @@
   <div class="products-grid" id="productsGrid"></div>
 </div>
 
-<!-- ══ صفحة تفاصيل المنتج (جديد) ══ -->
+<!-- ══ صفحة تفاصيل المنتج ══ -->
 <div class="page" id="page-detail">
   <div class="detail-wrap">
     <button class="detail-back" onclick="showPage('products')"><i class="fas fa-arrow-right"></i> رجوع للمنتجات</button>
@@ -426,6 +430,10 @@
           <div class="form-row">
             <div class="form-group"><label>صورة إضافية 2 (اختياري)</label><input type="text" id="addImg2" placeholder="images/44b.jpg"></div>
             <div class="form-group"><label>صورة إضافية 3 (اختياري)</label><input type="text" id="addImg3" placeholder="images/44c.jpg"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>صورة إضافية 4 (اختياري)</label><input type="text" id="addImg4" placeholder="images/44d.jpg"></div>
+            <div class="form-group"><label>صورة إضافية 5 (اختياري)</label><input type="text" id="addImg5" placeholder="images/44e.jpg"></div>
           </div>
           <div class="form-group" style="display:flex;align-items:center;gap:10px;">
             <input type="checkbox" id="addOnSale" style="width:20px;height:20px;cursor:pointer;">
