@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sama-crochet-v10';
+const CACHE_NAME = 'sama-crochet-v11';
 
 const CORE_ASSETS = [
   './',
